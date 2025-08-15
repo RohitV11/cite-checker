@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speech Analytics</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .container {
+            background: #fff;
+            max-width: 900px;
+            margin: auto;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            margin-bottom: 20px;
+        }
+        .filters {
+            margin-bottom: 20px;
+        }
+        .filters button {
+            background: #e0e0e0;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-right: 5px;
+            cursor: pointer;
+        }
+        .filters button.active {
+            background: #4285f4;
+            color: white;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+        li {
+            background: #f9f9f9;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        li:hover {
+            background: #ececec;
+        }
+        .details {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fafafa;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .claim {
+            margin-bottom: 10px;
+        }
+        .claim input {
+            width: 100%;
+            padding: 6px;
+            margin-top: 4px;
+        }
+        button.save-btn {
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button.save-btn:hover {
+            background: #3367d6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Speech Analytics</h1>
+
+        <div class="filters">
+            <button data-filter="all" class="active">All</button>
+            <button data-filter="pending">Pending</button>
+            <button data-filter="verified">Verified</button>
+        </div>
+
+        <ul id="speechList"></ul>
+        <div id="speechDetails" class="details" style="display:none;"></div>
+    </div>
+
+    <script type="module">
+        import { waitForAuth, getAllSpeechesForSpeaker, getSpeech, updateSpeechVerification } from './app.js';
+
+        const speechList = document.getElementById('speechList');
+        const speechDetails = document.getElementById('speechDetails');
+        const filterButtons = document.querySelectorAll('.filters button');
+
+        let allSpeeches = [];
+        let currentFilter = 'all';
+
+        function renderList() {
+            const filtered = currentFilter === 'all'
+                ? allSpeeches
+                : allSpeeches.filter(s => s.status === currentFilter);
+
+            if (!filtered.length) {
+                speechList.innerHTML = `<li>No speeches found for "${currentFilter}"</li>`;
+                return;
+            }
+
+            speechList.innerHTML = '';
+            filtered.forEach(speech => {
+                const li = document.createElement('li');
+                li.textContent = `${speech.title} (${speech.status})`;
+                li.addEventListener('click', () => showSpeechDetails(speech.id));
+                speechList.appendChild(li);
+            });
+        }
+
+        filterButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                filterButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentFilter = btn.dataset.filter;
+                renderList();
+            });
+        });
+
+        async function showSpeechDetails(speechId) {
+            const speech = await getSpeech(speechId);
+            let html = `<h3>${speech.title}</h3>
+                        <p><strong>Status:</strong> ${speech.status}</p>
+                        <p><strong>Speaker:</strong> ${speech.speakerName || speech.speakerId}</p>`;
+
+            if (speech.claims && speech.claims.length) {
+                html += `<h4>Claims:</h4>`;
+                speech.claims.forEach((claim, idx) => {
+                    html += `<div class="claim">
+                                <p>${claim.text}</p>`;
+                    if (speech.status === 'pending') {
+                        html += `<input type="url" id="claimLink-${idx}" placeholder="Verification link...">`;
+                    } else if (claim.verificationLink) {
+                        html += `<p><strong>Verified:</strong> <a href="${claim.verificationLink}" target="_blank">${claim.verificationLink}</a></p>`;
+                    }
+                    html += `</div>`;
+                });
+            }
+
+            if (speech.status === 'pending') {
+                html += `<button class="save-btn" id="saveVerification">Save Verification Links</button>`;
+            }
+
+            speechDetails.innerHTML = html;
+            speechDetails.style.display = 'block';
+
+            if (speech.status === 'pending') {
+                document.getElementById('saveVerification').addEventListener('click', async () => {
+                    const updatedClaims = speech.claims.map((claim, idx) => ({
+                        ...claim,
+                        verificationLink: document.getElementById(`claimLink-${idx}`).value.trim()
+                    }));
+                    await updateSpeechVerification(speechId, updatedClaims);
+                    alert('Verification links saved!');
+                    await loadSpeeches(await waitForAuth());
+                    speechDetails.style.display = 'none';
+                });
+            }
+        }
+
+        async function loadSpeeches(user) {
+            speechList.innerHTML = `<li>Loading speeches...</li>`;
+            allSpeeches = await getAllSpeechesForSpeaker(user.uid);
+            renderList();
+        }
+
+        // Init
+        (async () => {
+            const user = await waitForAuth();
+            if (!user) {
+                speechList.innerHTML = `<li>You must be signed in to view analytics.</li>`;
+                return;
+            }
+            await loadSpeeches(user);
+        })();
+    </script>
+</body>
+</html>

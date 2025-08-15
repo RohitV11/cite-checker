@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cite Checker App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .auth-buttons {
+            display: flex;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .auth-btn {
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            flex: 1;
+            transition: background-color 0.3s ease;
+        }
+        .auth-btn:hover {
+            background-color: #3367d6;
+        }
+        .auth-btn:active {
+            transform: translateY(1px);
+        }
+        #status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Cite Checker App</h1>
+        <p>Choose an option to continue:</p>
+        <div class="auth-buttons">
+            <button id="signInBtn" class="auth-btn">Sign In with Google</button>
+            <button id="signUpBtn" class="auth-btn">Sign Up with Google</button>
+        </div>
+        <div id="status"></div>
+    </div>
+
+    <script type="module">
+        // Import functions from our separate app.js file
+        import { signInWithGoogle, signUpWithGoogle, getCurrentUser, signOut } from './app.js';
+
+        // Get DOM elements
+        const signInBtn = document.getElementById('signInBtn');
+        const signUpBtn = document.getElementById('signUpBtn');
+        const statusDiv = document.getElementById('status');
+
+        // Add click event listener for Sign In
+        signInBtn.addEventListener('click', () => {
+            signInWithGoogle()
+                .then(({ user }) => {
+                    statusDiv.innerHTML = `
+                        <div class="success">
+                            <h3>Successfully signed in!</h3>
+                            <p>Redirecting to dashboard...</p>
+                        </div>
+                    `;
+                    // Redirect to home page after successful sign in
+                    setTimeout(() => {
+                        window.location.replace('home.html');
+                    }, 1000);
+                })
+                .catch((error) => {
+                    statusDiv.innerHTML = `
+                        <div class="error">
+                            <h3>Sign in failed</h3>
+                            <p><strong>Error:</strong> ${error.message}</p>
+                            <p><strong>Code:</strong> ${error.code}</p>
+                        </div>
+                    `;
+                });
+        });
+
+        // Add click event listener for Sign Up
+        signUpBtn.addEventListener('click', () => {
+            signUpWithGoogle()
+                .then(({ user, isNewUser }) => {
+                    const message = isNewUser ? 
+                        `<h3>Successfully signed up!</h3>` : 
+                        `<h3>Welcome back!</h3>`;
+                    
+                    statusDiv.innerHTML = `
+                        <div class="success">
+                            ${message}
+                            <p>Redirecting to dashboard...</p>
+                        </div>
+                    `;
+                    // Redirect to home page after successful sign up
+                    setTimeout(() => {
+                        window.location.replace('home.html');
+                    }, 1000);
+                })
+                .catch((error) => {
+                    statusDiv.innerHTML = `
+                        <div class="error">
+                            <h3>Sign up failed</h3>
+                            <p><strong>Error:</strong> ${error.message}</p>
+                            <p><strong>Code:</strong> ${error.code}</p>
+                        </div>
+                    `;
+                });
+        });
+    </script>
+</body>
+</html>
