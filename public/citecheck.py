@@ -211,7 +211,7 @@ from serpapi.google_search import GoogleSearch
 params = {
   "engine": "google",
   "q": search_query,
-  "api_key": "0f15d70628ef5d280ea1745932b8e563f4856827f8fb2ba0785380bbd77651f4"
+  "api_key": SERPAPI_KEY
 }
 
 search = GoogleSearch(params)
